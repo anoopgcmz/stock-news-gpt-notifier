@@ -78,10 +78,12 @@ def process_articles():
     return predictions
 
 
-# Run the job every hour in the background
-scheduler = BackgroundScheduler()
-scheduler.add_job(process_articles, "interval", hours=1)
-scheduler.start()
+# Run the job every hour in the background (disabled by default).
+# To enable, set the environment variable ENABLE_SCHEDULER to a truthy value.
+if os.getenv("ENABLE_SCHEDULER"):
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(process_articles, "interval", hours=1)
+    scheduler.start()
 
-# Shutdown scheduler when exiting the app
-atexit.register(lambda: scheduler.shutdown())
+    # Shutdown scheduler when exiting the app
+    atexit.register(lambda: scheduler.shutdown())
