@@ -52,7 +52,8 @@ def start_process():
     """Run article processing and display step-by-step status as HTML."""
 
     # Step 1: Fetch articles
-    articles = fetch_articles()
+    rss_url = os.getenv("RSS_FEED_URL")
+    articles = fetch_articles(rss_url)
     titles_html = "".join(f"<li>{a['title']}</li>" for a in articles) or "<li>No articles found</li>"
 
     # Step 2: Analyze articles with Gemini
@@ -97,7 +98,8 @@ def start_process():
 
 def process_articles():
     """Fetch recent articles and log model predictions."""
-    articles = fetch_articles()
+    rss_url = os.getenv("RSS_FEED_URL")
+    articles = fetch_articles(rss_url)
     predictions = []
     for article in articles:
         result = analyze_news_article(article["content"])

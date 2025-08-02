@@ -36,6 +36,20 @@ Fetches the latest financial news and analyzes each article with Google's Gemini
    [http://localhost:8000/docs](http://localhost:8000/docs) to manually submit
    articles to `/predict`.
 
+## Choosing the News Source
+
+By default the app pulls articles from the Economic Times stocks RSS feed. To
+use a different source, set the `RSS_FEED_URL` environment variable before
+starting the server or pass a feed URL to `fetch_articles` in your own code.
+
+```bash
+export RSS_FEED_URL="https://in.finance.yahoo.com/rss/topstories"  # Yahoo Finance
+uvicorn main:app --reload
+```
+
+Constants such as `ECONOMIC_TIMES_RSS` and `YAHOO_FINANCE_INDIA_RSS` are
+available in `context/news_scraper.py` for convenience.
+
 
 ## `/start` Endpoint
 
