@@ -47,6 +47,12 @@ def read_predictions():
     return HTMLResponse(content=html)
 
 
+@app.get("/start")
+def start_process():
+    """Manually trigger article processing and return predictions."""
+    return process_articles()
+
+
 def process_articles():
     """Fetch recent articles and log model predictions."""
     articles = fetch_articles()
@@ -56,7 +62,7 @@ def process_articles():
         predictions.append({"title": article["title"], "prediction": result})
 
     if not predictions:
-        return
+        return []
 
     log_file = "predictions_log.json"
     if os.path.exists(log_file):
@@ -68,6 +74,8 @@ def process_articles():
     existing.extend(predictions)
     with open(log_file, "w") as f:
         json.dump(existing, f, indent=2)
+
+    return predictions
 
 
 # Run the job every hour in the background
