@@ -2,7 +2,7 @@ import os
 import time
 import json
 from dotenv import load_dotenv
-from langchain_community.llms import HuggingFaceHub
+from langchain_huggingface import HuggingFaceEndpoint
 
 load_dotenv()
 
@@ -87,11 +87,11 @@ def analyze_news_article(text: str) -> str:
     task = "text2text-generation" if "t5" in model_name.lower() else "text-generation"
 
     try:
-        llm = HuggingFaceHub(
+        llm = HuggingFaceEndpoint(
             repo_id=model_name,
             huggingfacehub_api_token=HF_API_TOKEN,
-            model_kwargs={"temperature": 0.3},
             task=task,
+            model_kwargs={"temperature": 0.3},
         )
         result = llm.invoke(prompt).strip()
     except Exception as e:
