@@ -5,5 +5,5 @@ lxml[html_clean]
 feedparser
 python-dotenv
 langchain
-langchain-huggingface
+transformers
 huggingface-hub
