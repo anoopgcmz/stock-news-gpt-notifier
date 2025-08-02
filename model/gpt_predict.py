@@ -15,8 +15,10 @@ ALLOW_FALLBACK = True
 
 # --- Setup Gemini ---
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-pro_model = genai.GenerativeModel("gemini-pro")
-flash_model = genai.GenerativeModel("gemini-pro-vision")  # or "gemini-1.5-flash"
+PRO_MODEL_NAME = os.getenv("GENAI_PRO_MODEL", "gemini-1.5-pro")
+FALLBACK_MODEL_NAME = os.getenv("GENAI_FALLBACK_MODEL", "gemini-1.5-flash")
+pro_model = genai.GenerativeModel(PRO_MODEL_NAME)
+flash_model = genai.GenerativeModel(FALLBACK_MODEL_NAME)
 
 # --- Load or Init Request Log ---
 def load_request_log():
