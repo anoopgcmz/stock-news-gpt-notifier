@@ -2,3 +2,6 @@ fastapi
 APScheduler
 newspaper3k
 lxml[html_clean]
+feedparser
+python-dotenv
+google-generativeai
