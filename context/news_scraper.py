@@ -1,7 +1,25 @@
 import feedparser
 from newspaper import Article
 
-def fetch_articles(rss_url="https://finance.yahoo.com/news/rssindex"):
+# Default RSS feed for Indian financial news.
+YAHOO_FINANCE_INDIA_RSS = "https://in.finance.yahoo.com/rss/topstories"
+
+
+def fetch_articles(rss_url: str = YAHOO_FINANCE_INDIA_RSS):
+    """Fetch the latest financial news articles.
+
+    Parameters
+    ----------
+    rss_url: str, optional
+        RSS feed URL pointing to an Indian financial news source. Defaults to
+        Yahoo Finance India's top stories feed.
+
+    Returns
+    -------
+    list[dict]
+        A list of dictionaries containing the article title and full text.
+    """
+
     feed = feedparser.parse(rss_url)
     news = []
     for entry in feed.entries[:5]:
@@ -10,6 +28,6 @@ def fetch_articles(rss_url="https://finance.yahoo.com/news/rssindex"):
         article.parse()
         news.append({
             "title": article.title,
-            "content": article.text
+            "content": article.text,
         })
     return news
