@@ -83,10 +83,15 @@ def analyze_news_article(text: str) -> str:
     Reason: ...
     """
 
+    # Select task type based on model family
+    task = "text2text-generation" if "t5" in model_name.lower() else "text-generation"
+
     try:
         llm = HuggingFaceHub(
             repo_id=model_name,
             huggingfacehub_api_token=HF_API_TOKEN,
+            model_kwargs={"temperature": 0.3},
+            task=task,
         )
         result = llm.invoke(prompt).strip()
     except Exception as e:
