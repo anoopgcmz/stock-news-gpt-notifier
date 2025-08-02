@@ -91,7 +91,7 @@ def analyze_news_article(text: str) -> str:
             repo_id=model_name,
             huggingfacehub_api_token=HF_API_TOKEN,
             task=task,
-            model_kwargs={"temperature": 0.3},
+            temperature=0.3,
         )
         result = llm.invoke(prompt).strip()
     except Exception as e:
