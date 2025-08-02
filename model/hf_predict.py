@@ -2,7 +2,7 @@ import os
 import time
 import json
 from dotenv import load_dotenv
-from langchain_huggingface import HuggingFaceEndpoint
+from transformers import pipeline
 
 load_dotenv()
 
@@ -17,7 +17,7 @@ HF_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 PRO_MODEL_NAME = os.getenv("HF_PRO_MODEL", "google/flan-t5-large")
 FALLBACK_MODEL_NAME = os.getenv("HF_FALLBACK_MODEL", "google/flan-t5-base")
 
-"""Prediction helper using a Hugging Face hosted model via LangChain."""
+"""Prediction helper using a Hugging Face model via the Transformers pipeline."""
 
 # --- Load or Init Request Log ---
 def load_request_log():
@@ -87,13 +87,9 @@ def analyze_news_article(text: str) -> str:
     task = "text2text-generation" if "t5" in model_name.lower() else "text-generation"
 
     try:
-        llm = HuggingFaceEndpoint(
-            repo_id=model_name,
-            huggingfacehub_api_token=HF_API_TOKEN,
-            task=task,
-            temperature=0.3,
-        )
-        result = llm.invoke(prompt).strip()
+        generator = pipeline(task, model_name, use_auth_token=HF_API_TOKEN)
+        output = generator(prompt)
+        result = output[0]["generated_text"].strip()
     except Exception as e:
         return f"❌ Hugging Face API error: {str(e)}"
 
