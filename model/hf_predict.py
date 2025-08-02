@@ -2,8 +2,7 @@ import os
 import time
 import json
 from dotenv import load_dotenv
-from datetime import datetime, timedelta
-from google import genai
+from langchain_community.llms import HuggingFaceHub
 
 load_dotenv()
 
@@ -13,10 +12,12 @@ MAX_REQUESTS_PER_MINUTE = 5
 MAX_REQUESTS_PER_DAY = 100
 ALLOW_FALLBACK = True
 
-# --- Setup Gemini ---
-client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-PRO_MODEL_NAME = os.getenv("GENAI_PRO_MODEL", "gemini-1.5-pro")
-FALLBACK_MODEL_NAME = os.getenv("GENAI_FALLBACK_MODEL", "gemini-1.5-flash")
+# --- Setup Hugging Face ---
+HF_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+PRO_MODEL_NAME = os.getenv("HF_PRO_MODEL", "google/flan-t5-large")
+FALLBACK_MODEL_NAME = os.getenv("HF_FALLBACK_MODEL", "google/flan-t5-base")
+
+"""Prediction helper using a Hugging Face hosted model via LangChain."""
 
 # --- Load or Init Request Log ---
 def load_request_log():
@@ -27,6 +28,7 @@ def load_request_log():
             return json.load(f)
         except json.JSONDecodeError:
             return []
+
 
 def save_request_log(log):
     with open(LOG_FILE, "w") as f:
@@ -82,13 +84,13 @@ def analyze_news_article(text: str) -> str:
     """
 
     try:
-        response = client.models.generate_content(
-            model=model_name,
-            contents=prompt,
+        llm = HuggingFaceHub(
+            repo_id=model_name,
+            huggingfacehub_api_token=HF_API_TOKEN,
         )
-        result = response.text.strip()
+        result = llm.invoke(prompt).strip()
     except Exception as e:
-        return f"❌ Gemini API error: {str(e)}"
+        return f"❌ Hugging Face API error: {str(e)}"
 
     # Log success
     log.append(time.time())

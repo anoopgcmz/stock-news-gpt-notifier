@@ -4,4 +4,6 @@ newspaper3k
 lxml[html_clean]
 feedparser
 python-dotenv
-google-generativeai
+langchain
+langchain-community
+huggingface-hub
