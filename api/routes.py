@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from model.gpt_predict import analyze_news_article
+from model.hf_predict import analyze_news_article
 
 router = APIRouter()
 

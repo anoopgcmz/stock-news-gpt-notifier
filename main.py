@@ -10,7 +10,7 @@ import json
 import os
 
 from context.news_scraper import fetch_articles
-from model.gpt_predict import analyze_news_article
+from model.hf_predict import analyze_news_article
 
 
 app = FastAPI()
@@ -19,7 +19,7 @@ app.include_router(prediction_router, prefix="/predict")
 
 @app.get("/", response_class=HTMLResponse)
 def read_predictions():
-    """Display stored Gemini analysis predictions as an HTML table."""
+    """Display stored Hugging Face analysis predictions as an HTML table."""
     log_file = "predictions_log.json"
     if not os.path.exists(log_file):
         return "<h1>No predictions available</h1>"
@@ -34,9 +34,9 @@ def read_predictions():
 
     html = f"""
     <html>
-        <head><title>Gemini Analysis</title></head>
+        <head><title>Hugging Face Analysis</title></head>
         <body>
-            <h1>Gemini Analysis Predictions</h1>
+            <h1>Hugging Face Analysis Predictions</h1>
             <table border='1'>
                 <tr><th>Article</th><th>Prediction</th></tr>
                 {rows}
@@ -56,7 +56,7 @@ def start_process():
     articles = fetch_articles(rss_url)
     titles_html = "".join(f"<li>{a['title']}</li>" for a in articles) or "<li>No articles found</li>"
 
-    # Step 2: Analyze articles with Gemini
+    # Step 2: Analyze articles with Hugging Face
     predictions = []
     analysis_items = []
     for article in articles:

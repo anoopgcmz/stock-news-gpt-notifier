@@ -1,6 +1,6 @@
 # Stock News GPT Notifier
 
-Fetches the latest financial news and analyzes each article with Google's Gemini model.
+Fetches the latest financial news and analyzes each article with a Hugging Face hosted model.
 
 ## Setup
 
@@ -35,12 +35,14 @@ Fetches the latest financial news and analyzes each article with Google's Gemini
    - APScheduler
    - fastapi
    - feedparser
-   - google-generativeai
+   - langchain
+   - langchain-community
+   - huggingface-hub
    - lxml[html_clean]
    - newspaper3k
    - python-dotenv
 
-4. Configure a `.env` file with your `GOOGLE_API_KEY`.
+4. Configure a `.env` file with your `HUGGINGFACEHUB_API_TOKEN`.
 
 5. Start the FastAPI server with Uvicorn:
 
@@ -48,7 +50,7 @@ Fetches the latest financial news and analyzes each article with Google's Gemini
    uvicorn main:app --reload
    ```
 
-   The background scheduler fetches articles every hour and logs Gemini's
+   The background scheduler fetches articles every hour and logs Hugging Face
    predictions to `predictions_log.json`.
 
 6. Open [http://localhost:8000/](http://localhost:8000/) to see the stored
@@ -76,7 +78,7 @@ available in `context/news_scraper.py` for convenience.
 Visiting `/start` triggers the article processing pipeline and displays three steps:
 
 1. Fetch articles.
-2. Run Gemini analysis on each article.
+2. Run Hugging Face analysis on each article.
 3. Save predictions to `predictions_log.json`.
 
 The page returns an HTML report showing the results of each step.
