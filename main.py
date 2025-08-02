@@ -47,10 +47,52 @@ def read_predictions():
     return HTMLResponse(content=html)
 
 
-@app.get("/start")
+@app.get("/start", response_class=HTMLResponse)
 def start_process():
-    """Manually trigger article processing and return predictions."""
-    return process_articles()
+    """Run article processing and display step-by-step status as HTML."""
+
+    # Step 1: Fetch articles
+    articles = fetch_articles()
+    titles_html = "".join(f"<li>{a['title']}</li>" for a in articles) or "<li>No articles found</li>"
+
+    # Step 2: Analyze articles with Gemini
+    predictions = []
+    analysis_items = []
+    for article in articles:
+        prediction = analyze_news_article(article["content"])
+        predictions.append({"title": article["title"], "prediction": prediction})
+        analysis_items.append(f"<li><strong>{article['title']}</strong>: {prediction}</li>")
+    analysis_html = "".join(analysis_items) or "<li>No analyses performed</li>"
+
+    # Step 3: Append predictions to the log file
+    log_file = "predictions_log.json"
+    if os.path.exists(log_file):
+        with open(log_file, "r") as f:
+            existing = json.load(f)
+    else:
+        existing = []
+
+    existing.extend(predictions)
+    with open(log_file, "w") as f:
+        json.dump(existing, f, indent=2)
+    save_message = f"Saved {len(predictions)} prediction(s) to {log_file}."
+
+    html = f"""
+    <html>
+        <head><title>Article Processing</title></head>
+        <body>
+            <h1>Article Processing Steps</h1>
+            <h2>Step 1: Fetch Articles</h2>
+            <ul>{titles_html}</ul>
+            <h2>Step 2: Analyze Articles</h2>
+            <ul>{analysis_html}</ul>
+            <h2>Step 3: Save Predictions</h2>
+            <p>{save_message}</p>
+        </body>
+    </html>
+    """
+
+    return HTMLResponse(content=html)
 
 
 def process_articles():
