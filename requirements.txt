@@ -1,3 +1,4 @@
-
 fastapi
 APScheduler
+newspaper3k
+lxml[html_clean]
