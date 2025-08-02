@@ -1,5 +1,6 @@
 
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from api.routes import router as prediction_router
 
 # Scheduler imports
@@ -14,6 +15,36 @@ from model.gpt_predict import analyze_news_article
 
 app = FastAPI()
 app.include_router(prediction_router, prefix="/predict")
+
+
+@app.get("/", response_class=HTMLResponse)
+def read_predictions():
+    """Display stored Gemini analysis predictions as an HTML table."""
+    log_file = "predictions_log.json"
+    if not os.path.exists(log_file):
+        return "<h1>No predictions available</h1>"
+
+    with open(log_file, "r") as f:
+        predictions = json.load(f)
+
+    rows = "".join(
+        f"<tr><td>{p['title']}</td><td>{p['prediction']}</td></tr>"
+        for p in predictions
+    )
+
+    html = f"""
+    <html>
+        <head><title>Gemini Analysis</title></head>
+        <body>
+            <h1>Gemini Analysis Predictions</h1>
+            <table border='1'>
+                <tr><th>Article</th><th>Prediction</th></tr>
+                {rows}
+            </table>
+        </body>
+    </html>
+    """
+    return HTMLResponse(content=html)
 
 
 def process_articles():
