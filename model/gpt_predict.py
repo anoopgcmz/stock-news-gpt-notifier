@@ -3,7 +3,7 @@ import time
 import json
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
-import google.generativeai as genai
+from google import genai
 
 load_dotenv()
 
@@ -14,11 +14,9 @@ MAX_REQUESTS_PER_DAY = 100
 ALLOW_FALLBACK = True
 
 # --- Setup Gemini ---
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 PRO_MODEL_NAME = os.getenv("GENAI_PRO_MODEL", "gemini-1.5-pro")
 FALLBACK_MODEL_NAME = os.getenv("GENAI_FALLBACK_MODEL", "gemini-1.5-flash")
-pro_model = genai.GenerativeModel(PRO_MODEL_NAME)
-flash_model = genai.GenerativeModel(FALLBACK_MODEL_NAME)
 
 # --- Load or Init Request Log ---
 def load_request_log():
@@ -60,14 +58,14 @@ def analyze_news_article(text: str) -> str:
     if rpm >= MAX_REQUESTS_PER_MINUTE:
         return "⏳ Too many requests this minute. Please wait a moment."
 
-    # Choose model
+    # Choose model name
     if rpd > MAX_REQUESTS_PER_DAY - 10 or rpm >= MAX_REQUESTS_PER_MINUTE - 1:
         if ALLOW_FALLBACK:
-            model = flash_model
+            model_name = FALLBACK_MODEL_NAME
         else:
             return "⚠️ Request rate near limit. Try again later."
     else:
-        model = pro_model
+        model_name = PRO_MODEL_NAME
 
     # Compose prompt
     prompt = f"""
@@ -84,7 +82,10 @@ def analyze_news_article(text: str) -> str:
     """
 
     try:
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=prompt,
+        )
         result = response.text.strip()
     except Exception as e:
         return f"❌ Gemini API error: {str(e)}"
