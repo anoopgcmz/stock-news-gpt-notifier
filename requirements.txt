@@ -7,3 +7,4 @@ python-dotenv
 langchain
 transformers
 huggingface-hub
+torch>=2.0
