@@ -36,3 +36,13 @@ Fetches the latest financial news and analyzes each article with Google's Gemini
    [http://localhost:8000/docs](http://localhost:8000/docs) to manually submit
    articles to `/predict`.
 
+
+## `/start` Endpoint
+
+Visiting `/start` triggers the article processing pipeline and displays three steps:
+
+1. Fetch articles.
+2. Run Gemini analysis on each article.
+3. Save predictions to `predictions_log.json`.
+
+The page returns an HTML report showing the results of each step.
