@@ -35,22 +35,19 @@ def read_predictions():
     rows = "".join(
         f"<tr><td>{p['title']}</td>"
         f"<td>{p.get('ticker','')}</td>"
-        f"<td>{p.get('sentiment',{}).get('label','')}</td>"
-        f"<td>{p.get('indicators',{}).get('ma5','')}</td>"
-        f"<td>{p.get('indicators',{}).get('ma20','')}</td>"
-        f"<td>{p.get('indicators',{}).get('rsi','')}</td>"
-        f"<td>{p.get('indicators',{}).get('direction','')}</td>"
-        f"<td>{p.get('recommendation','')}</td></tr>"
+        f"<td>{p.get('action','')}</td>"
+        f"<td>{p.get('confidence','')}</td>"
+        f"<td>{p.get('reason','')}</td></tr>"
         for p in predictions
     )
 
     html = f"""
     <html>
-        <head><title>Hugging Face Analysis</title></head>
+        <head><title>Model Predictions</title></head>
         <body>
-            <h1>Hugging Face Analysis Predictions</h1>
+            <h1>Model Predictions</h1>
             <table border='1'>
-                <tr><th>Article</th><th>Ticker</th><th>Sentiment</th><th>MA5</th><th>MA20</th><th>RSI</th><th>Trend</th><th>Recommendation</th></tr>
+                <tr><th>Article</th><th>Ticker</th><th>Action</th><th>Confidence</th><th>Reason</th></tr>
                 {rows}
             </table>
         </body>
@@ -59,39 +56,28 @@ def read_predictions():
     return HTMLResponse(content=html)
 
 
-@app.get("/start", response_class=HTMLResponse)
+@app.get("/start")
 def start_process():
-    """Run article processing and display step-by-step status as HTML."""
+    """Run article processing and return structured predictions."""
 
-    # Step 1: Fetch articles
     rss_url = os.getenv("RSS_FEED_URL")
     articles = fetch_articles(rss_url)
-    titles_html = "".join(f"<li>{a['title']}</li>" for a in articles) or "<li>No articles found</li>"
 
-    # Step 2: Analyze articles with sentiment and price data
     predictions = []
-    analysis_items = []
     for article in articles:
         sentiment = analyze_news_article(article["content"])
         ticker = extract_ticker(article["title"] + " " + article["content"])
         indicators = get_price_indicators(ticker) if ticker else {}
-        recommendation = make_recommendation(
-            sentiment.get("label"), indicators.get("direction")
-        )
+        recommendation = make_recommendation(sentiment, indicators)
         prediction = {
             "title": article["title"],
             "ticker": ticker,
-            "sentiment": sentiment,
-            "indicators": indicators,
-            "recommendation": recommendation,
+            "action": recommendation["action"],
+            "confidence": recommendation["confidence"],
+            "reason": recommendation["reason"],
         }
         predictions.append(prediction)
-        analysis_items.append(
-            f"<li><strong>{article['title']}</strong>: {recommendation}</li>"
-        )
-    analysis_html = "".join(analysis_items) or "<li>No analyses performed</li>"
 
-    # Step 3: Append predictions to the log file
     log_file = "predictions_log.json"
     if os.path.exists(log_file):
         with open(log_file, "r") as f:
@@ -102,24 +88,8 @@ def start_process():
     existing.extend(predictions)
     with open(log_file, "w") as f:
         json.dump(existing, f, indent=2)
-    save_message = f"Saved {len(predictions)} prediction(s) to {log_file}."
 
-    html = f"""
-    <html>
-        <head><title>Article Processing</title></head>
-        <body>
-            <h1>Article Processing Steps</h1>
-            <h2>Step 1: Fetch Articles</h2>
-            <ul>{titles_html}</ul>
-            <h2>Step 2: Analyze Articles</h2>
-            <ul>{analysis_html}</ul>
-            <h2>Step 3: Save Predictions</h2>
-            <p>{save_message}</p>
-        </body>
-    </html>
-    """
-
-    return HTMLResponse(content=html)
+    return {"predictions": predictions}
 
 
 def process_articles():
@@ -131,16 +101,14 @@ def process_articles():
         sentiment = analyze_news_article(article["content"])
         ticker = extract_ticker(article["title"] + " " + article["content"])
         indicators = get_price_indicators(ticker) if ticker else {}
-        recommendation = make_recommendation(
-            sentiment.get("label"), indicators.get("direction")
-        )
+        recommendation = make_recommendation(sentiment, indicators)
         predictions.append(
             {
                 "title": article["title"],
                 "ticker": ticker,
-                "sentiment": sentiment,
-                "indicators": indicators,
-                "recommendation": recommendation,
+                "action": recommendation["action"],
+                "confidence": recommendation["confidence"],
+                "reason": recommendation["reason"],
             }
         )
 

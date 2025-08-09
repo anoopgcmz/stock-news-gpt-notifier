@@ -75,7 +75,7 @@ def get_price_indicators(ticker: str) -> dict:
     ])
     try:
         model.fit(X.iloc[:-1], y.iloc[:-1])
-        pred = model.predict(X.iloc[[-1]])[0]
+        prob_up = model.predict_proba(X.iloc[[-1]])[0][1]
     except Exception:
         return {}
 
@@ -83,15 +83,33 @@ def get_price_indicators(ticker: str) -> dict:
         "ma5": round(dataset.iloc[-1]["MA5"], 2),
         "ma20": round(dataset.iloc[-1]["MA20"], 2),
         "rsi": round(dataset.iloc[-1]["RSI"], 2),
-        "direction": "up" if pred == 1 else "down",
+        "direction": "up" if prob_up >= 0.5 else "down",
+        "prob_up": round(float(prob_up), 2),
     }
     return indicators
 
 
-def make_recommendation(sentiment: Optional[str], direction: Optional[str]) -> str:
-    """Combine sentiment and price trend into a simple trading signal."""
-    if sentiment == "POSITIVE" and direction == "up":
-        return "BUY"
-    if sentiment == "NEGATIVE" and direction == "down":
-        return "SELL"
-    return "HOLD"
+def make_recommendation(sentiment: dict, indicators: dict) -> dict:
+    """Combine sentiment probabilities and price trend into a trading signal."""
+
+    scores = {k.lower(): v for k, v in sentiment.get("scores", {}).items()}
+    direction = indicators.get("direction")
+    prob_up = indicators.get("prob_up")
+    if not scores or direction is None or prob_up is None:
+        return {"action": "HOLD", "confidence": 0.0, "reason": "Insufficient data"}
+
+    sentiment_label = max(scores, key=scores.get)
+    if sentiment_label == "positive" and direction == "up":
+        action = "BUY"
+        confidence = (scores["positive"] + prob_up) / 2
+        reason = "Positive sentiment and upward trend"
+    elif sentiment_label == "negative" and direction == "down":
+        action = "SELL"
+        confidence = (scores["negative"] + (1 - prob_up)) / 2
+        reason = "Negative sentiment and downward trend"
+    else:
+        action = "HOLD"
+        confidence = max(scores.get("neutral", 0), 1 - abs(0.5 - prob_up) * 2)
+        reason = "Mixed signals"
+
+    return {"action": action, "confidence": round(float(confidence), 2), "reason": reason}

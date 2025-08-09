@@ -82,10 +82,8 @@ available in `context/news_scraper.py` for convenience.
 
 ## `/start` Endpoint
 
-Visiting `/start` triggers the article processing pipeline and displays three steps:
-
-1. Fetch articles.
-2. Run Hugging Face analysis on each article.
-3. Save predictions to `predictions_log.json`.
-
-The page returns an HTML report showing the results of each step.
+Visiting `/start` triggers the article processing pipeline and returns a JSON
+payload containing the model's structured predictions. Each entry includes the
+detected ticker, a trading action (`BUY`, `SELL` or `HOLD`), a confidence score
+and a short reason. Predictions are appended to `predictions_log.json` and the
+root page (`/`) renders them in a table.
