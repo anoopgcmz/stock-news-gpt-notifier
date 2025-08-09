@@ -7,6 +7,10 @@ router = APIRouter()
 async def predict_from_news(article: dict):
     try:
         result = analyze_news_article(article["content"])
+        if "error" in result:
+            raise HTTPException(status_code=400, detail=result["error"])
         return {"result": result}
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

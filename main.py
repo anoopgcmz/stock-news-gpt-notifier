@@ -11,6 +11,11 @@ import os
 
 from context.news_scraper import fetch_articles
 from model.hf_predict import analyze_news_article
+from model.stock_predict import (
+    extract_ticker,
+    get_price_indicators,
+    make_recommendation,
+)
 
 
 app = FastAPI()
@@ -19,7 +24,7 @@ app.include_router(prediction_router, prefix="/predict")
 
 @app.get("/", response_class=HTMLResponse)
 def read_predictions():
-    """Display stored Hugging Face analysis predictions as an HTML table."""
+    """Display stored analysis predictions as an HTML table."""
     log_file = "predictions_log.json"
     if not os.path.exists(log_file):
         return "<h1>No predictions available</h1>"
@@ -28,7 +33,14 @@ def read_predictions():
         predictions = json.load(f)
 
     rows = "".join(
-        f"<tr><td>{p['title']}</td><td>{p['prediction']}</td></tr>"
+        f"<tr><td>{p['title']}</td>"
+        f"<td>{p.get('ticker','')}</td>"
+        f"<td>{p.get('sentiment',{}).get('label','')}</td>"
+        f"<td>{p.get('indicators',{}).get('ma5','')}</td>"
+        f"<td>{p.get('indicators',{}).get('ma20','')}</td>"
+        f"<td>{p.get('indicators',{}).get('rsi','')}</td>"
+        f"<td>{p.get('indicators',{}).get('direction','')}</td>"
+        f"<td>{p.get('recommendation','')}</td></tr>"
         for p in predictions
     )
 
@@ -38,7 +50,7 @@ def read_predictions():
         <body>
             <h1>Hugging Face Analysis Predictions</h1>
             <table border='1'>
-                <tr><th>Article</th><th>Prediction</th></tr>
+                <tr><th>Article</th><th>Ticker</th><th>Sentiment</th><th>MA5</th><th>MA20</th><th>RSI</th><th>Trend</th><th>Recommendation</th></tr>
                 {rows}
             </table>
         </body>
@@ -56,13 +68,27 @@ def start_process():
     articles = fetch_articles(rss_url)
     titles_html = "".join(f"<li>{a['title']}</li>" for a in articles) or "<li>No articles found</li>"
 
-    # Step 2: Analyze articles with Hugging Face
+    # Step 2: Analyze articles with sentiment and price data
     predictions = []
     analysis_items = []
     for article in articles:
-        prediction = analyze_news_article(article["content"])
-        predictions.append({"title": article["title"], "prediction": prediction})
-        analysis_items.append(f"<li><strong>{article['title']}</strong>: {prediction}</li>")
+        sentiment = analyze_news_article(article["content"])
+        ticker = extract_ticker(article["title"] + " " + article["content"])
+        indicators = get_price_indicators(ticker) if ticker else {}
+        recommendation = make_recommendation(
+            sentiment.get("label"), indicators.get("direction")
+        )
+        prediction = {
+            "title": article["title"],
+            "ticker": ticker,
+            "sentiment": sentiment,
+            "indicators": indicators,
+            "recommendation": recommendation,
+        }
+        predictions.append(prediction)
+        analysis_items.append(
+            f"<li><strong>{article['title']}</strong>: {recommendation}</li>"
+        )
     analysis_html = "".join(analysis_items) or "<li>No analyses performed</li>"
 
     # Step 3: Append predictions to the log file
@@ -102,8 +128,21 @@ def process_articles():
     articles = fetch_articles(rss_url)
     predictions = []
     for article in articles:
-        result = analyze_news_article(article["content"])
-        predictions.append({"title": article["title"], "prediction": result})
+        sentiment = analyze_news_article(article["content"])
+        ticker = extract_ticker(article["title"] + " " + article["content"])
+        indicators = get_price_indicators(ticker) if ticker else {}
+        recommendation = make_recommendation(
+            sentiment.get("label"), indicators.get("direction")
+        )
+        predictions.append(
+            {
+                "title": article["title"],
+                "ticker": ticker,
+                "sentiment": sentiment,
+                "indicators": indicators,
+                "recommendation": recommendation,
+            }
+        )
 
     if not predictions:
         return []

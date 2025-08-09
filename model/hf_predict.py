@@ -54,27 +54,32 @@ def update_and_check_limits():
     return log, requests_last_minute, requests_today
 
 # --- Rate-limit aware request function ---
-def analyze_news_article(text: str) -> str:
-    """Classify the sentiment of a financial news article."""
+def analyze_news_article(text: str) -> dict:
+    """Classify the sentiment of a financial news article.
+
+    Returns a dictionary with ``label`` and ``score`` keys. If the model is
+    unavailable or a rate limit is exceeded, an ``error`` key is returned
+    instead of raising an exception.
+    """
 
     if _classifier is None:
-        return f"❌ Model not loaded: {_classifier_error}"
+        return {"error": f"Model not loaded: {_classifier_error}"}
 
     log, rpm, rpd = update_and_check_limits()
 
     # Handle over-limit
     if rpd >= MAX_REQUESTS_PER_DAY:
-        return "❌ Daily limit reached: Please try again tomorrow."
+        return {"error": "Daily limit reached: Please try again tomorrow."}
 
     if rpm >= MAX_REQUESTS_PER_MINUTE:
-        return "⏳ Too many requests this minute. Please wait a moment."
+        return {"error": "Too many requests this minute. Please wait a moment."}
 
     try:
         output = _classifier(text)
         result = output[0]
-        prediction = f"{result['label']} ({result['score']:.2f})"
+        prediction = {"label": result["label"], "score": round(result["score"], 2)}
     except Exception as e:
-        return f"❌ Hugging Face model error: {str(e)}"
+        return {"error": f"Hugging Face model error: {str(e)}"}
 
     # Log success
     log.append(time.time())
