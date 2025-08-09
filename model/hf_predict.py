@@ -15,7 +15,8 @@ MAX_REQUESTS_PER_DAY = 100
 MODEL_DIR = os.getenv("FINBERT_MODEL_DIR", "models/finbert-tone")
 
 try:
-    _classifier = pipeline("text-classification", model=MODEL_DIR)
+    # ``return_all_scores`` will let us expose a probability for each label
+    _classifier = pipeline("text-classification", model=MODEL_DIR, return_all_scores=True)
     _classifier_error = None
 except Exception as e:  # pragma: no cover - model path may be missing in tests
     _classifier = None
@@ -57,9 +58,10 @@ def update_and_check_limits():
 def analyze_news_article(text: str) -> dict:
     """Classify the sentiment of a financial news article.
 
-    Returns a dictionary with ``label`` and ``score`` keys. If the model is
-    unavailable or a rate limit is exceeded, an ``error`` key is returned
-    instead of raising an exception.
+    Returns a dictionary with the most likely ``label`` as well as
+    probabilities for all labels under ``scores``. If the model is unavailable
+    or a rate limit is exceeded, an ``error`` key is returned instead of
+    raising an exception.
     """
 
     if _classifier is None:
@@ -75,9 +77,10 @@ def analyze_news_article(text: str) -> dict:
         return {"error": "Too many requests this minute. Please wait a moment."}
 
     try:
-        output = _classifier(text)
-        result = output[0]
-        prediction = {"label": result["label"], "score": round(result["score"], 2)}
+        output = _classifier(text)[0]
+        scores = {item["label"].upper(): round(item["score"], 2) for item in output}
+        label = max(scores, key=scores.get)
+        prediction = {"label": label, "scores": scores}
     except Exception as e:
         return {"error": f"Hugging Face model error: {str(e)}"}
 
