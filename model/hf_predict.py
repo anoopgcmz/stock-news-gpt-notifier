@@ -10,14 +10,18 @@ load_dotenv()
 LOG_FILE = "request_log.json"
 MAX_REQUESTS_PER_MINUTE = 5
 MAX_REQUESTS_PER_DAY = 100
-ALLOW_FALLBACK = True
 
-# --- Setup Hugging Face ---
-HF_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-PRO_MODEL_NAME = os.getenv("HF_PRO_MODEL", "google/flan-t5-large")
-FALLBACK_MODEL_NAME = os.getenv("HF_FALLBACK_MODEL", "google/flan-t5-base")
+# --- Model Initialization ---
+MODEL_DIR = os.getenv("FINBERT_MODEL_DIR", "models/finbert-tone")
 
-"""Prediction helper using a Hugging Face model via the Transformers pipeline."""
+try:
+    _classifier = pipeline("text-classification", model=MODEL_DIR)
+    _classifier_error = None
+except Exception as e:  # pragma: no cover - model path may be missing in tests
+    _classifier = None
+    _classifier_error = str(e)
+
+"""Prediction helper using a locally cached Hugging Face model."""
 
 # --- Load or Init Request Log ---
 def load_request_log():
@@ -51,6 +55,11 @@ def update_and_check_limits():
 
 # --- Rate-limit aware request function ---
 def analyze_news_article(text: str) -> str:
+    """Classify the sentiment of a financial news article."""
+
+    if _classifier is None:
+        return f"❌ Model not loaded: {_classifier_error}"
+
     log, rpm, rpd = update_and_check_limits()
 
     # Handle over-limit
@@ -60,41 +69,15 @@ def analyze_news_article(text: str) -> str:
     if rpm >= MAX_REQUESTS_PER_MINUTE:
         return "⏳ Too many requests this minute. Please wait a moment."
 
-    # Choose model name
-    if rpd > MAX_REQUESTS_PER_DAY - 10 or rpm >= MAX_REQUESTS_PER_MINUTE - 1:
-        if ALLOW_FALLBACK:
-            model_name = FALLBACK_MODEL_NAME
-        else:
-            return "⚠️ Request rate near limit. Try again later."
-    else:
-        model_name = PRO_MODEL_NAME
-
-    # Compose prompt
-    prompt = f"""
-    Given the following financial news article: "{text}"
-
-    1. Identify which public stock/company it is about (include name + ticker if possible).
-    2. Predict whether the stock will go UP, DOWN, or stay NEUTRAL tomorrow.
-    3. Give a brief reason.
-
-    Format:
-    Ticker: XYZ
-    Prediction: UP/DOWN/NEUTRAL
-    Reason: ...
-    """
-
-    # Select task type based on model family
-    task = "text2text-generation" if "t5" in model_name.lower() else "text-generation"
-
     try:
-        generator = pipeline(task, model_name, use_auth_token=HF_API_TOKEN)
-        output = generator(prompt)
-        result = output[0]["generated_text"].strip()
+        output = _classifier(text)
+        result = output[0]
+        prediction = f"{result['label']} ({result['score']:.2f})"
     except Exception as e:
-        return f"❌ Hugging Face API error: {str(e)}"
+        return f"❌ Hugging Face model error: {str(e)}"
 
     # Log success
     log.append(time.time())
     save_request_log(log)
 
-    return result
+    return prediction

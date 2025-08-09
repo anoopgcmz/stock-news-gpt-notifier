@@ -1,6 +1,6 @@
 # Stock News GPT Notifier
 
-Fetches the latest financial news and analyzes each article with a Hugging Face hosted model.
+Fetches the latest financial news and analyzes each article with a locally cached Hugging Face model.
 
 ## Setup
 
@@ -42,7 +42,14 @@ Fetches the latest financial news and analyzes each article with a Hugging Face 
    - newspaper3k
    - python-dotenv
 
-4. Configure a `.env` file with your `HUGGINGFACEHUB_API_TOKEN`.
+4. Download the FinBERT sentiment model weights:
+
+   ```bash
+   huggingface-cli download yiyanghkust/finbert-tone --local-dir models/finbert-tone
+   ```
+
+   The app loads the model from `models/finbert-tone` by default. Set
+   `FINBERT_MODEL_DIR` if you store it elsewhere.
 
 5. Start the FastAPI server with Uvicorn:
 
