@@ -8,3 +8,6 @@ langchain
 transformers
 huggingface-hub
 torch>=2.0
+yfinance
+pandas
+scikit-learn
