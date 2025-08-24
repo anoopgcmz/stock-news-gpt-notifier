@@ -56,47 +56,11 @@ def read_predictions():
     return HTMLResponse(content=html)
 
 
-@app.get("/start")
-def start_process():
-    """Run article processing and return structured predictions."""
-
-    rss_url = os.getenv("RSS_FEED_URL")
+def run_pipeline(rss_url: str) -> list[dict]:
+    """Fetch articles, analyze them, persist predictions, and return the results."""
     articles = fetch_articles(rss_url)
+    predictions: list[dict] = []
 
-    predictions = []
-    for article in articles:
-        sentiment = analyze_news_article(article["content"])
-        ticker = extract_ticker(article["title"] + " " + article["content"])
-        indicators = get_price_indicators(ticker) if ticker else {}
-        recommendation = make_recommendation(sentiment, indicators)
-        prediction = {
-            "title": article["title"],
-            "ticker": ticker,
-            "action": recommendation["action"],
-            "confidence": recommendation["confidence"],
-            "reason": recommendation["reason"],
-        }
-        predictions.append(prediction)
-
-    log_file = "predictions_log.json"
-    if os.path.exists(log_file):
-        with open(log_file, "r") as f:
-            existing = json.load(f)
-    else:
-        existing = []
-
-    existing.extend(predictions)
-    with open(log_file, "w") as f:
-        json.dump(existing, f, indent=2)
-
-    return {"predictions": predictions}
-
-
-def process_articles():
-    """Fetch recent articles and log model predictions."""
-    rss_url = os.getenv("RSS_FEED_URL")
-    articles = fetch_articles(rss_url)
-    predictions = []
     for article in articles:
         sentiment = analyze_news_article(article["content"])
         ticker = extract_ticker(article["title"] + " " + article["content"])
@@ -112,9 +76,6 @@ def process_articles():
             }
         )
 
-    if not predictions:
-        return []
-
     log_file = "predictions_log.json"
     if os.path.exists(log_file):
         with open(log_file, "r") as f:
@@ -129,11 +90,24 @@ def process_articles():
     return predictions
 
 
+@app.get("/start")
+def start_process():
+    """Run article processing and return structured predictions."""
+
+    rss_url = os.getenv("RSS_FEED_URL")
+    return run_pipeline(rss_url)
+
+
 # Run the job every hour in the background (disabled by default).
 # To enable, set the environment variable ENABLE_SCHEDULER to a truthy value.
 if os.getenv("ENABLE_SCHEDULER"):
     scheduler = BackgroundScheduler()
-    scheduler.add_job(process_articles, "interval", hours=1)
+    scheduler.add_job(
+        run_pipeline,
+        "interval",
+        hours=1,
+        args=[os.getenv("RSS_FEED_URL")],
+    )
     scheduler.start()
 
     # Shutdown scheduler when exiting the app
