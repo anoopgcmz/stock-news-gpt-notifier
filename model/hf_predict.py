@@ -1,13 +1,12 @@
 import os
 import time
-import json
+import threading
 from dotenv import load_dotenv
 from transformers import pipeline
 
 load_dotenv()
 
 # --- Configuration ---
-LOG_FILE = "request_log.json"
 MAX_REQUESTS_PER_MINUTE = 5
 MAX_REQUESTS_PER_DAY = 100
 
@@ -24,35 +23,37 @@ except Exception as e:  # pragma: no cover - model path may be missing in tests
 
 """Prediction helper using a locally cached Hugging Face model."""
 
-# --- Load or Init Request Log ---
+# --- In-memory Request Log ---
+_REQUEST_LOG = []
+_LOG_LOCK = threading.Lock()
+
+
 def load_request_log():
-    if not os.path.exists(LOG_FILE):
-        return []
-    with open(LOG_FILE, "r") as f:
-        try:
-            return json.load(f)
-        except json.JSONDecodeError:
-            return []
+    """Return a copy of the current request log."""
+    with _LOG_LOCK:
+        return list(_REQUEST_LOG)
 
 
-def save_request_log(log):
-    with open(LOG_FILE, "w") as f:
-        json.dump(log, f)
+def save_request_log(timestamp: float) -> None:
+    """Append a timestamp to the request log in a thread-safe manner."""
+    with _LOG_LOCK:
+        _REQUEST_LOG.append(timestamp)
 
-# --- Cleanup + Count ---
+
 def update_and_check_limits():
-    log = load_request_log()
-    now = time.time()
-    one_minute_ago = now - 60
-    one_day_ago = now - 86400
+    """Prune old requests and return current usage counts atomically."""
+    with _LOG_LOCK:
+        now = time.time()
+        one_minute_ago = now - 60
+        one_day_ago = now - 86400
 
-    # Remove old entries
-    log = [ts for ts in log if ts > one_day_ago]
+        # Remove requests older than one day
+        _REQUEST_LOG[:] = [ts for ts in _REQUEST_LOG if ts > one_day_ago]
 
-    requests_last_minute = len([ts for ts in log if ts > one_minute_ago])
-    requests_today = len(log)
+        requests_last_minute = len([ts for ts in _REQUEST_LOG if ts > one_minute_ago])
+        requests_today = len(_REQUEST_LOG)
 
-    return log, requests_last_minute, requests_today
+    return requests_last_minute, requests_today
 
 # --- Rate-limit aware request function ---
 def analyze_news_article(text: str) -> dict:
@@ -67,7 +68,7 @@ def analyze_news_article(text: str) -> dict:
     if _classifier is None:
         return {"error": f"Model not loaded: {_classifier_error}"}
 
-    log, rpm, rpd = update_and_check_limits()
+    rpm, rpd = update_and_check_limits()
 
     # Handle over-limit
     if rpd >= MAX_REQUESTS_PER_DAY:
@@ -85,7 +86,6 @@ def analyze_news_article(text: str) -> dict:
         return {"error": f"Hugging Face model error: {str(e)}"}
 
     # Log success
-    log.append(time.time())
-    save_request_log(log)
+    save_request_log(time.time())
 
     return prediction
